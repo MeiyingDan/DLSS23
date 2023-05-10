@@ -46,7 +46,7 @@ class ImageGenerator:
 
 
 
-    def next(self):
+    def next(self) -> tuple:
         # This function creates a batch of images and corresponding labels and returns them.
         # In this context a "batch" of images just means a bunch, say 10 images that are forwarded at once.
         # Note that your amount of total data might not be divisible without remainder with the batch_size.
