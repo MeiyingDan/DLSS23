@@ -20,7 +20,7 @@ class TestCheckers(unittest.TestCase):
 
         import pattern
         c = pattern.Checker(250, 25)
-        c.draw
+        c.draw()
         np.testing.assert_almost_equal(c.output, self.reference_img, err_msg="Check if your pattern starts with a"
                                                                              "black tile in the upper left corner.")
 
@@ -30,7 +30,7 @@ class TestCheckers(unittest.TestCase):
 
         import pattern
         c = pattern.Checker(100, 25)
-        c.draw
+        c.draw()
         np.testing.assert_almost_equal(c.output, self.reference_img2, err_msg="Check if your pattern starts with a"
                                                                               "black tile in the upper left corner.")
 
@@ -39,7 +39,7 @@ class TestCheckers(unittest.TestCase):
 
         import pattern
         c = pattern.Checker(100, 25)
-        res = c.draw
+        res = c.draw()
         res[:] = 0
         np.testing.assert_raises(AssertionError, np.testing.assert_array_equal,
                                  res, c.output, "draw() did not return a copy!")
@@ -67,7 +67,7 @@ class TestCircle(unittest.TestCase):
 
         import pattern
         c = pattern.Circle(1024, 200, (512, 256))
-        circ = c.draw
+        circ = c.draw()
         iou = self._IoU(circ, self.reference_img)
         self.assertAlmostEqual(iou, 1.0, 2, msg="Possible errors: "
                                                 "1. np.meshgrid creates meshgrid similar to a "
@@ -82,7 +82,7 @@ class TestCircle(unittest.TestCase):
         # (50,50) and compares it to the reference image using the IoU metric
         import pattern
         c = pattern.Circle(512, 20, (50, 50))
-        circ = c.draw
+        circ = c.draw()
         iou = self._IoU(circ, self.reference_img2)
         self.assertAlmostEqual(iou, 1.0, 1, msg="Possible errors: "
                                                 "1. np.meshgrid creates meshgrid similar to a "
@@ -96,7 +96,7 @@ class TestCircle(unittest.TestCase):
         # Checks whether the output of the pattern is a copy of the output object rather than the output object itself.
         import pattern
         c = pattern.Circle(512, 20, (50, 50))
-        res = c.draw
+        res = c.draw()
         res[:] = 0
         np.testing.assert_raises(AssertionError, np.testing.assert_array_equal,
                                  res, c.output, "draw() did not return a copy!")
@@ -124,7 +124,7 @@ class TestSpectrum(unittest.TestCase):
         # Creates an RGB spectrum with resolution 255x255x3 and compares it to the reference image
         import pattern
         s = pattern.Spectrum(255)
-        spec = s.draw
+        spec = s.draw()
         np.testing.assert_almost_equal(spec,
                                        self.reference_img,
                                        decimal=2,
@@ -137,7 +137,7 @@ class TestSpectrum(unittest.TestCase):
         # Creates an RGB spectrum with resolution 100x100x3 and compares it to the reference image
         import pattern
         s = pattern.Spectrum(100)
-        spec = s.draw
+        spec = s.draw()
         np.testing.assert_almost_equal(spec,
                                        self.reference_img2,
                                        decimal=2,
@@ -152,7 +152,7 @@ class TestSpectrum(unittest.TestCase):
         # output object rather than the output object itself.
         import pattern
         c = pattern.Spectrum(100)
-        res = c.draw
+        res = c.draw()
         res[:] = 0
         np.testing.assert_raises(AssertionError, np.testing.assert_array_equal,
                                  res, c.output, "draw() did not return a copy!")

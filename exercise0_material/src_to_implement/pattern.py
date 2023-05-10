@@ -16,6 +16,7 @@ class Checker():
             twoBW_secondrow = np.concatenate((white_cell, black_cell), axis=1)
             fourBW = np.concatenate((twoBW_firstrow, twoBW_secondrow), axis=0)
             self.output = np.tile(fourBW, (self.resolution // (2*self.tile_size), self.resolution // (2*self.tile_size)))
+
         return self.output.copy()
 
         # black_cells = np.zeros((self.resolution, self.resolution), dtype=np.int16)

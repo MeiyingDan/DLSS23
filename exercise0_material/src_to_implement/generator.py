@@ -44,17 +44,33 @@ class ImageGenerator:
             image = skimage.transform.resize(image, (self.image_size))
             self.image_set.append((image, self.label[file_name[:-4]]))
 
+        if self.shuffle:
+            permutation = np.random.permutation(len(self.loaded_data))
+            self.loaded_data = self.loaded_data[permutation]
+            self.labels = self.labels[permutation]
 
-
-    def next(self) -> tuple:
+    def next(self):
         # This function creates a batch of images and corresponding labels and returns them.
         # In this context a "batch" of images just means a bunch, say 10 images that are forwarded at once.
         # Note that your amount of total data might not be divisible without remainder with the batch_size.
         # Think about how to handle such cases
         #TODO: implement next method
 
+        num_image = len(self.image_set)
+        num_batch = num_image // self.batch_size
+        batch_datas = []
+        for i in range(num_batch):
+            batch_data = self.image_set[i * self.batch_size: (i + 1) * self.batch_size]
+            batch_datas.append(batch_data)
+        if num_image % self.batch_size != 0:
+            num_batch = num_image // self.batch_size + 1
+            num_repeat = self.batch_size - num_image % self.batch_size
+            last_batch = np.concatenate((self.image_set[-self.batch_size + num_repeat:], self.image_set[:num_repeat]))
 
-        return (images,labels)
+            # batch_data = np.concatenate((batch_data, last_batch))
+            batch_datas.append(last_batch)
+
+        return batch_datas
 
 
         #return images, labels
