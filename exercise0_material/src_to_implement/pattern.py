@@ -22,14 +22,7 @@ class Checker():
     def show(self):
         plt.imshow(self.output, cmap='gray')
         plt.show()
-
-
-
-
-
-
-
-
+        
 class Circle():
     def __init__(self, resolution, radius, position):
         self.resolution = resolution
