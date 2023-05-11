@@ -26,6 +26,7 @@ class ImageGenerator:
         self.rotation = rotation
         self.mirroring = mirroring
         self.shuffle = shuffle
+        self.current_index = 0
         self.class_dict = {0: 'airplane', 1: 'automobile', 2: 'bird', 3: 'cat', 4: 'deer', 5: 'dog', 6: 'frog',
                            7: 'horse', 8: 'ship', 9: 'truck'}
         self.current_epoch = 0
@@ -70,7 +71,7 @@ class ImageGenerator:
                 batch_datas.append(last_batch)
 
             self.index += self.batch_size
-            if self.index >= self.num_image:
+            if self.index >= num_image:
                 self.index = 0
 
         return tuple(batch_datas)
