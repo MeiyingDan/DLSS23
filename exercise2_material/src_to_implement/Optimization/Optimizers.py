@@ -17,9 +17,9 @@ class Adam:
         self.rho = rho
 
     def calculate_update(self, weight_tensor, gradient_tensor):
-        m_tensor = self.mu * m_tensor + (1 - self.mu) * gradient_tensor
-        v_tensor = self.rho * v_tensor + (1 - self.rho) * np.square(gradient_tensor)
-        m_hat = m_tensor / (1 - self.mu ** t)
-        v_hat = v_tensor / (1 - self.rho ** t)
+        v = self.mu * v + (1 - self.mu) * gradient_tensor
+        r = self.rho * r + (1 - self.rho) * np.square(gradient_tensor)
+        m_hat = v / (1 - self.mu)
+        v_hat = r / (1 - self.rho)
         weight_tensor = self.learning_rate * m_hat / (np.sqrt(v_hat) + np.epsilon)
-        return weight_tensor, m_tensor, v_tensor
+        return weight_tensor, v, r
