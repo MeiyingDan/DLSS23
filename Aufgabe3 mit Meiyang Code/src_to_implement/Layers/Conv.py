@@ -4,7 +4,15 @@ from scipy.signal import convolve, convolve2d, correlate2d, correlate
 
 class Conv(): # wo ist die Inheritance definiert ?? 
     def __init__(self, stride_shape, convolution_shape, num_kernels):
-        # super().__init__()
+        # super().__init__(
+            
+        self.num_kernels = num_kernels
+        self.bias = np.random.uniform(0, 1, (self.num_kernels,))
+        self.gradient_weights = None
+        self.gradient_bias = None
+        self.trainable = True
+        self.optimizer_weights = None   # 优化器对象，用于优化权重
+        self.optimizer_bias = None
 
         self.stride_shape = stride_shape
         if type(stride_shape) == int:
@@ -19,13 +27,6 @@ class Conv(): # wo ist die Inheritance definiert ??
         else:
             self.convolution_shape = (*convolution_shape, 1)
             self.weights = self.weights[:, :, :, np.newaxis]
-        self.num_kernels = num_kernels
-        self.bias = np.random.uniform(0, 1, (self.num_kernels,))
-        self.gradient_weights = None
-        self.gradient_bias = None
-        self.trainable = True
-        self.optimizer_weights = None   # 优化器对象，用于优化权重
-        self.optimizer_bias = None
 
     def forward(self, input_tensor):
         if len(input_tensor.shape) == 3:
