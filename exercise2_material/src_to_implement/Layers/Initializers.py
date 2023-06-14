@@ -16,7 +16,10 @@ class Xavier:
         limit = np.sqrt(6 / (fan_in + fan_out))
         return np.random.uniform(-limit, limit, size=weights_shape)
 
-class He:
-    def initialize(weights_shape, fan_in, fan_out):
-        limit = np.sqrt(2 / fan_in)
-        return np.random.randn(*weights_shape) * limit
+class He(object):
+    def __init__(self):
+        pass
+    
+    def initialize(self, weights_shape, fan_in, fan_out):
+        sigma = np.sqrt(2/fan_in)
+        return np.random.randn(*weights_shape) * sigma
