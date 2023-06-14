@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import convolve, convolve2d, correlate2d, correlate
 
 
-class Conv(Base.BaseLayer): # wo ist die Inheritance definiert ?? -- hab ich hingefügt 
+class Conv(BaseLayer): # wo ist die Inheritance definiert ?? -- hab ich hingefügt 
     def __init__(self, stride_shape, convolution_shape, num_kernels):
         # super().__init__()
         if type(self.stride_shape) == int:
