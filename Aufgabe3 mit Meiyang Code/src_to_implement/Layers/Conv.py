@@ -2,9 +2,13 @@ import numpy as np
 from scipy.signal import convolve, convolve2d, correlate2d, correlate
 
 
-class Conv:
+class Conv(Base.BaseLayer): # wo ist die Inheritance definiert ?? -- hab ich hingefügt 
     def __init__(self, stride_shape, convolution_shape, num_kernels):
         # super().__init__()
+        if type(self.stride_shape) == int:
+            self.stride_shape = (self.stride_shape, self.stride_shape)
+        elif len(self.stride_shape) == 1:
+            self.stride_shape = (self.stride_shape[0], self.stride_shape[0])
         self.stride_shape = stride_shape
         self.convolution_shape = convolution_shape
         self.num_kernels = num_kernels
@@ -157,14 +161,14 @@ class Conv:
         self._optimizer = optimizer
 
     @property
-    def gradient_weights(self):
+    def gradient_weights(self):    #return the gradient with respect to the weights and bias, after they have been calculated in the backward-pass.
         return self._gradient_weights
 
     @gradient_weights.setter
     def gradient_weights(self, gradient_weights):
         self._gradient_weights = gradient_weights
 
-    @property
+    @property                   #return the gradient with respect to the weights and bias, after they have been calculated in the backward-pass.
     def gradient_bias(self):
         return self._gradient_bias
 
