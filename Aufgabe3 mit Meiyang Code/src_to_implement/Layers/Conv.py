@@ -5,11 +5,11 @@ from scipy.signal import convolve, convolve2d, correlate2d, correlate
 class Conv(): # wo ist die Inheritance definiert ?? 
     def __init__(self, stride_shape, convolution_shape, num_kernels):
         # super().__init__()
-        if type(self.stride_shape) == int:
-            self.stride_shape = (self.stride_shape, self.stride_shape)
-        elif len(self.stride_shape) == 1:
-            self.stride_shape = (self.stride_shape[0], self.stride_shape[0])
         self.stride_shape = stride_shape
+        if type(stride_shape) == int:
+            stride_shape = (stride_shape, stride_shape)
+        elif len(stride_shape) == 1:
+            stride_shape = (stride_shape[0], stride_shape[0])
         self.convolution_shape = convolution_shape
         self.num_kernels = num_kernels
         self.weights = np.random.uniform(0, 1, size=(self.num_kernels, *self.convolution_shape))
