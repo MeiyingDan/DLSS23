@@ -10,7 +10,12 @@ class Conv(): # wo ist die Inheritance definiert ??
             stride_shape = (stride_shape, stride_shape)
         elif len(stride_shape) == 1:
             stride_shape = (stride_shape[0], stride_shape[0])
-        self.convolution_shape = convolution_shape
+        if (len(self.convolution_shape) == 3):
+            self.convolution_shape = convolution_shape
+        else:
+            self.convolution_shape = (*convolution_shape, 1)
+            self.weights = self.weights[:, :, :, np.newaxis]
+        
         self.num_kernels = num_kernels
         self.weights = np.random.uniform(0, 1, size=(self.num_kernels, *self.convolution_shape))
         self.bias = np.random.uniform(0, 1, (self.num_kernels,))
