@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.signal import convolve, convolve2d, correlate2d, correlate
-
+import copy 
 
 class Conv(): # wo ist die Inheritance definiert ?? 
     def __init__(self, stride_shape, convolution_shape, num_kernels):
