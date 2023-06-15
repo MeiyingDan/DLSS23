@@ -10,9 +10,8 @@ class Conv(): # wo ist die Inheritance definiert ??
         elif len(stride_shape) == 1:
             stride_shape = (stride_shape[0], stride_shape[0])
         self.stride_shape = stride_shape
-        self.conv2d = (len(convolution_shape) == 3)
         self.weights = np.random.uniform(size = (num_kernels, *convolution_shape))
-        if self.conv2d:
+        if (len(convolution_shape) == 3):
             self.convolution_shape = convolution_shape
         else:
             self.convolution_shape = (*convolution_shape, 1)
