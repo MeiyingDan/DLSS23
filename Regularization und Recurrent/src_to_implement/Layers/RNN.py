@@ -31,36 +31,37 @@ class RNN(Base.BaseLayer):
         self.prev_h_t = None
         self.batch_size = None
         self.optimizer = None
-        #Aufgabe 2.2/3 Eine Funktion, die Eingangsvektor fur weiteren Layer zuruckgibt
-        def forward(self, input_tensor):
-            self.batch_size = input_tensor.shape[0]
-            #Konditional Schleife, Entschiedet ob versteckten Zustand als Null betrachten oder von vorherigen Iteration benutzten.
-            if self._memorize:
-                if self.h_t is None:
-                    self.h_t = np.zeros((self.batch_size + 1, self.hidden_size))
-                else:
-                    self.h_t[0] = self.prev_h_t
-            else:
+
+    #Aufgabe 2.2/3 Eine Funktion, die Eingangsvektor fur weiteren Layer zuruckgibt
+    def forward(self,input_tensor):
+        self.batch_size = input_tensor.shape[0]
+        #Konditional Schleife, Entschiedet ob versteckten Zustand als Null betrachten oder von vorherigen Iteration benutzten.
+        if self._memorize:
+            if self.h_t is None:
                 self.h_t = np.zeros((self.batch_size + 1, self.hidden_size))
+            else:
+                self.h_t[0] = self.prev_h_t
+        else:
+            self.h_t = np.zeros((self.batch_size + 1, self.hidden_size))
 
-            y_t = np.zeros((self.batch_size, self.output_size))
+        y_t = np.zeros((self.batch_size, self.output_size))
 
-            for b in range(self.batch_size):
-                hidden_ax = self.h_t[b][np.newaxis, :]
-                input_ax = input_tensor[b][np.newaxis, :]
-                input_new = np.concatenate((hidden_ax, input_ax), axis = 1)
+        for b in range(self.batch_size):
+            hidden_ax = self.h_t[b][np.newaxis, :]
+            input_ax = input_tensor[b][np.newaxis, :]
+            input_new = np.concatenate((hidden_ax, input_ax), axis = 1)
 
-                self.h_mem.append(input_new)
+            self.h_mem.append(input_new)
 
-                w_t = self.FC_h.forward(input_new)
-                input_new = np.concatenate((np.expand_dims(self.h_t[b], 0), np.expand_dims(input_tensor[b], 0)), axis=1)
-                self.h_t[b+1] = TanH().forward(w_t) 
-                y_t[b] = (self.FC_y.forward(self.h_t[b + 1][np.newaxis, :]))
-            
-            self.prev_h_t = self.h_t[-1]
-            self.input_tensor = input_tensor
+            w_t = self.FC_h.forward(input_new)
+            input_new = np.concatenate((np.expand_dims(self.h_t[b], 0), np.expand_dims(input_tensor[b], 0)), axis=1)
+            self.h_t[b+1] = TanH().forward(w_t) 
+            y_t[b] = (self.FC_y.forward(self.h_t[b + 1][np.newaxis, :]))
+        
+        self.prev_h_t = self.h_t[-1]
+        self.input_tensor = input_tensor
 
-            return y_t
+        return y_t
     #Aufgabe 2.2/4, Eine Funktion, die Error Tensors zuruckgibt
     def backward(self, error_tensor):
         self.out_error = np.zeros((self.batch_size, self.input_size))
