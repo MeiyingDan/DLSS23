@@ -1,105 +1,83 @@
 import numpy as np
-from Layers import Base, Helpers 
-import copy
+from Layers.Base import BaseLayer
+from Layers.Helpers import compute_bn_gradients
 
-class BatchNormalization(Base.BaseLayer):
+
+class BatchNormalization(BaseLayer):
     def __init__(self, channels):
         super().__init__()
-        self.trainable = True
         self.channels = channels
-        self.initialize()
-        self._optimizer = None
-        self.moving_mean = None
-        self.moving_var = None
-        self.decay = 0.8
-    
-    def initialize(self, weights_initializer=None, bias_initializer=None):
-        self.gamma = np.ones(self.channels)
-        self.beta = np.zeros(self.channels)
+        self.trainable = True
+        self.alpha = 0.8
+        self.epsilon = np.finfo(float).eps
+        self.running_mean = np.zeros(self.channels)
+        self.running_variance = np.zeros(self.channels)
+        self.optimizer = None
+
+        self.weights = np.ones((self.channels))
+        self.bias = np.zeros((self.channels))
+        self.gradient_weights = None
+
+    def initialize(self, weights_initializer, bias_initializer):
+        self.weights = weights_initializer.initialize((self.channels,), self.channels, self.channels)
+        self.bias = bias_initializer.initialize((self.channels,), self.channels, self.channels)
+
 
     def forward(self, input_tensor):
-        X = input_tensor
-        conv = False
-        if X.ndim == 4:
-            conv = True
-            X = self.reformat(X)
-        self.X = X
+        self.input_tensor = input_tensor
+        if len(input_tensor.shape) == 4:
+            self.B, self.H, self.M, self.N = input_tensor.shape
+            self.input_tensor = self.reformat(input_tensor)
+
+        if self.testing_phase == False:
+            self.mean = np.mean(self.input_tensor, axis=0)
+            self.variance = np.var(self.input_tensor, axis=0)
+            self.running_mean = np.copy(self.mean)
+            self.running_variance = np.copy(self.variance)
+
+        self.running_mean = self.alpha * self.running_mean + (1 - self.alpha) * self.mean
+        self.running_variance = self.alpha * self.running_variance + (1 - self.alpha) * self.variance
+
         if self.testing_phase:
-            if self.moving_mean is None or self.moving_var is None:
-                print("[!] BatchNormalization: You need to train the model before testing")
-            self.mean = self.moving_mean
-            self.var = self.moving_var
+            self.x_hat = (self.input_tensor - self.running_mean) / np.sqrt(self.running_variance + self.epsilon)
         else:
-            self.mean = np.mean(X, axis= 0)
-            self.var = np.var(X, axis=0)
-            if self.moving_mean is None:
-                self.moving_mean = copy.deepcopy(self.mean)
-                self.moving_var = copy.deepcopy(self.var)
-            else:
-                self.moving_mean = self.moving_mean * self.decay + self.mean * (1 - self.decay)
-                self.moving_var = self.moving_var * self.decay + self.var * (1 - self.decay)
-        self.X_hat = (X - self.mean) / np.sqrt(self.var + np.finfo(float).eps)
-        out = self.gamma * self.X_hat + self.beta
-        if conv:
-            out = self.reformat(out)
-        return out
+            self.x_hat = (self.input_tensor - self.mean) / np.sqrt(self.variance + self.epsilon)
+
+        self.output_tensor = self.weights * self.x_hat + self.bias
+
+        if len(input_tensor.shape) == 4:
+            self.output_tensor = self.reformat(self.output_tensor)
+            self.input_tensor = self.reformat(self.input_tensor)
+        return self.output_tensor
+
 
     def backward(self, error_tensor):
-        E = error_tensor
-        conv = False
-        if E.ndim == 4:
-            conv = True
-            E = self.reformat(E)
-        dgamma = np.sum(E * self.X_hat, axis=0)
-        dbeta = np.sum(E, axis=0)
-        grad = Helpers.compute_bn_gradients(E, self.X, self.gamma, self.mean, self.var)
-        if self._optimizer is not None:
-            self._optimizer.weight.calculate_update(self.gamma, dgamma)
-            self._optimizer.bias.calculate_update(self.beta, dbeta)
-
-        if conv:
-            grad = self.reformat(grad)
-        self.gradient_weights = dgamma
-        self.gradient_bias = dbeta
-        return grad
-    
-    def reformat(self, tensor):
-        if tensor.ndim == 4:
-            self.reformat_shape = tensor.shape
-            B, H, M, N = tensor.shape
-            tensor = tensor.reshape(B, H, M * N)
-            tensor = tensor.transpose(0, 2, 1)
-            tensor = tensor.reshape(B * M * N, H)
-            return tensor
+        if len(error_tensor.shape) == 4:
+            error_tensor = self.reformat(error_tensor)
+            input_tensor = self.reformat(self.input_tensor)
         else:
-            B, H, M, N = self.reformat_shape
-            tensor = tensor.reshape(B, M * N, H)
-            tensor = tensor.transpose(0, 2, 1)
-            tensor = tensor.reshape(B, H, M, N)
-            return tensor
+            input_tensor = self.input_tensor
 
-    @property
-    def weights(self):
-        return self.gamma
+        self.gradient_weights = np.sum(error_tensor * self.x_hat, axis=0)
+        self.gradient_bias = np.sum(error_tensor, axis=0)
+        gradient_x = compute_bn_gradients(error_tensor, input_tensor, self.weights, self.mean, self.variance, self.epsilon)
 
-    @weights.setter
-    def weights(self, gamma):
-        self.gamma = gamma
+        if len(self.input_tensor.shape) == 4:
+            gradient_x = self.reformat(gradient_x)
 
-    @property
-    def bias(self):
-        return self.beta
+        if self.optimizer is not None:
+            self.weights = self.optimizer.calculate_update(self.weights, self.gradient_weights)
+            self.bias = self.optimizer.calculate_update(self.bias, self.gradient_bias)
+        return gradient_x
 
-    @bias.setter
-    def bias(self, beta):
-        self.beta = beta
-
-    @property
-    def optimizer(self):
-        return self._optimizer
-
-    @optimizer.setter
-    def optimizer(self, optimizer):
-        self._optimizer = optimizer
-        self._optimizer.weight = copy.deepcopy(optimizer)
-        self._optimizer.bias = copy.deepcopy(optimizer)
+    def reformat(self, tensor):
+        if len(tensor.shape) == 4:
+            self.B, self.H, self.M, self.N = tensor.shape
+            reshaped_tensor = np.reshape(tensor, (self.B, self.H, self.M * self.N))
+            transposed_tensor = np.transpose(reshaped_tensor, (0, 2, 1))
+            final_tensor = np.reshape(transposed_tensor, (-1, self.H))
+        else:
+            reshaped_tensor = np.reshape(tensor, (self.B, -1, self.H))
+            transposed_tensor = np.transpose(reshaped_tensor, (0, 2, 1))
+            final_tensor = np.reshape(transposed_tensor, (self.B, self.H, self.M, self.N))
+        return final_tensor

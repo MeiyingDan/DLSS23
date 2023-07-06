@@ -1,13 +1,16 @@
-from Layers import Base
+import numpy as np
+from Layers.Base import BaseLayer
 
-class Flatten(Base.BaseLayer):
+
+class Flatten(BaseLayer):
     def __init__(self):
         super().__init__()
 
     def forward(self, input_tensor):
-        self.lastShape = input_tensor.shape
-        batch_size = self.lastShape[0]
-        return input_tensor.reshape(batch_size, -1)
+        self.input_shape = input_tensor.shape
+        flattened_tensor = input_tensor.reshape(self.input_shape[0], -1)       # batch_size, *spatial_dim, channels
+        return flattened_tensor
 
     def backward(self, error_tensor):
-        return error_tensor.reshape(self.lastShape)
+        reshaped_error = error_tensor.reshape(self.input_shape)
+        return reshaped_error

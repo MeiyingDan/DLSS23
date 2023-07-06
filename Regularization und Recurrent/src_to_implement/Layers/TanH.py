@@ -1,7 +1,7 @@
 import numpy as np
-from Layers import Base
+from Layers.Base import BaseLayer
 
-class TanH(Base.BaseLayer):
+class TanH(BaseLayer):
     def __init__(self):
         super().__init__()
 
@@ -10,4 +10,4 @@ class TanH(Base.BaseLayer):
         return self.activ
 
     def backward(self, error_tensor):
-        return (1 - np.square(self.activ))*error_tensor
+        return (1 - np.square(self.activ)) * error_tensor

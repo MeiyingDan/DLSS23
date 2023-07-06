@@ -10,7 +10,7 @@ except BaseException as e:
 from Optimization import *
 import numpy as np
 from scipy import stats
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import gaussian_filter
 import NeuralNetwork
 import matplotlib.pyplot as plt
 import os
@@ -47,6 +47,10 @@ class TestFullyConnected(unittest.TestCase):
     def test_trainable(self):
         layer = FullyConnected.FullyConnected(self.input_size, self.output_size)
         self.assertTrue(layer.trainable)
+    
+    def test_weights_size(self):
+        layer = FullyConnected.FullyConnected(self.input_size, self.output_size)
+        self.assertTrue((layer.weights.shape) in ((self.input_size + 1, self.output_size), (self.output_size, self.input_size + 1)))
 
     def test_forward_size(self):
         layer = FullyConnected.FullyConnected(self.input_size, self.output_size)
@@ -180,7 +184,7 @@ class TestTanH(unittest.TestCase):
 
     def test_trainable(self):
         layer = TanH.TanH()
-        self.assertFalse(layer.trainable)
+        self.assertFalse(layer.trainable, msg="Error: trainable member for TanH is set incorrectly.")
 
     def test_forward(self):
         expected_tensor = 1 - 2 / (np.exp(2*self.input_tensor) + 1)
@@ -196,8 +200,8 @@ class TestTanH(unittest.TestCase):
         out_max = np.max(output_tensor)
         out_min = np.min(output_tensor)
 
-        self.assertLessEqual(out_max, 1.)
-        self.assertGreaterEqual(out_min, -1.)
+        self.assertLessEqual(out_max, 1., msg="Error: Output of TanH should always be smaller than 1")
+        self.assertGreaterEqual(out_min, -1., msg="Error: Output of TanH should always be greater than -1")
 
     def test_gradient(self):
         layers = list()
@@ -222,7 +226,7 @@ class TestSigmoid(unittest.TestCase):
 
     def test_trainable(self):
         layer = Sigmoid.Sigmoid()
-        self.assertFalse(layer.trainable)
+        self.assertFalse(layer.trainable, msg="Error: trainable member for TanH is set incorrectly.")
 
     def test_forward(self):
         expected_tensor = 0.5 * (1. + np.tanh(self.input_tensor / 2.))
@@ -238,8 +242,8 @@ class TestSigmoid(unittest.TestCase):
         out_max = np.max(output_tensor)
         out_min = np.min(output_tensor)
 
-        self.assertLessEqual(out_max, 1.)
-        self.assertGreaterEqual(out_min, 0.)
+        self.assertLessEqual(out_max, 1., msg="Error: Output of Sigmoid should always be smaller than 1")
+        self.assertGreaterEqual(out_min, 0., msg="Error: Output of Sigmoid should always be greater than 0")
 
     def test_gradient(self):
         layers = list()
@@ -296,8 +300,8 @@ class TestSoftMax(unittest.TestCase):
         self.assertAlmostEqual(float(loss), 12)
 
     def test_regression_backward_high_loss_w_CrossEntropy(self):
-        input_tensor = self.label_tensor - 1.
-        input_tensor *= -100.
+        input_tensor = self.label_tensor - 1
+        input_tensor *= -10.
         layer = SoftMax.SoftMax()
         loss_layer = Loss.CrossEntropyLoss()
 
@@ -307,11 +311,12 @@ class TestSoftMax(unittest.TestCase):
         error = layer.backward(error)
         # test if every wrong class confidence is decreased
         for element in error[self.label_tensor == 0]:
-            self.assertGreaterEqual(element, 1/3)
+            self.assertAlmostEqual(element, 1/3, places = 3)
 
         # test if every correct class confidence is increased
         for element in error[self.label_tensor == 1]:
-            self.assertAlmostEqual(element, -1)
+            self.assertAlmostEqual(element, -1, places = 3)
+
 
     def test_regression_forward(self):
         np.random.seed(1337)
@@ -499,7 +504,7 @@ class TestFlatten(unittest.TestCase):
     def setUp(self):
         self.batch_size = 9
         self.input_shape = (3, 4, 11)
-        self.input_tensor = np.array(range(int(np.prod(self.input_shape) * self.batch_size)), dtype=np.float)
+        self.input_tensor = np.array(range(int(np.prod(self.input_shape) * self.batch_size)), dtype=float)
         self.input_tensor = self.input_tensor.reshape(self.batch_size, *self.input_shape)
 
     def test_trainable(self):
@@ -509,7 +514,7 @@ class TestFlatten(unittest.TestCase):
     def test_flatten_forward(self):
         flatten = Flatten.Flatten()
         output_tensor = flatten.forward(self.input_tensor)
-        input_vector = np.array(range(int(np.prod(self.input_shape) * self.batch_size)), dtype=np.float)
+        input_vector = np.array(range(int(np.prod(self.input_shape) * self.batch_size)), dtype=float)
         input_vector = input_vector.reshape(self.batch_size, np.prod(self.input_shape))
         self.assertLessEqual(np.sum(np.abs(output_tensor-input_vector)), 1e-9)
 
@@ -558,21 +563,21 @@ class TestConv(unittest.TestCase):
 
     def test_forward_size(self):
         conv = Conv.Conv((1, 1), self.kernel_shape, self.num_kernels)
-        input_tensor = np.array(range(int(np.prod(self.input_shape) * self.batch_size)), dtype=np.float)
+        input_tensor = np.array(range(int(np.prod(self.input_shape) * self.batch_size)), dtype=float)
         input_tensor = input_tensor.reshape(self.batch_size, *self.input_shape)
         output_tensor = conv.forward(input_tensor)
         self.assertEqual(output_tensor.shape, (self.batch_size, self.num_kernels, *self.input_shape[1:]))
 
     def test_forward_size_stride(self):
         conv = Conv.Conv((3, 2), self.kernel_shape, self.num_kernels)
-        input_tensor = np.array(range(int(np.prod(self.input_shape) * self.batch_size)), dtype=np.float)
+        input_tensor = np.array(range(int(np.prod(self.input_shape) * self.batch_size)), dtype=float)
         input_tensor = input_tensor.reshape(self.batch_size, *self.input_shape)
         output_tensor = conv.forward(input_tensor)
         self.assertEqual(output_tensor.shape, (self.batch_size, self.num_kernels, 4, 7))
 
     def test_forward_size_stride_uneven_image(self):
         conv = Conv.Conv((3, 2), self.kernel_shape, self.num_kernels + 1)
-        input_tensor = np.array(range(int(np.prod(self.uneven_input_shape) * (self.batch_size + 1))), dtype=np.float)
+        input_tensor = np.array(range(int(np.prod(self.uneven_input_shape) * (self.batch_size + 1))), dtype=float)
         input_tensor = input_tensor.reshape(self.batch_size + 1, *self.uneven_input_shape)
         output_tensor = conv.forward(input_tensor)
         self.assertEqual(output_tensor.shape, ( self.batch_size+1, self.num_kernels+1, 4, 8))
@@ -623,14 +628,14 @@ class TestConv(unittest.TestCase):
 
     def test_1D_forward_size(self):
         conv = Conv.Conv([2], (3, 3), self.num_kernels)
-        input_tensor = np.array(range(3 * 15 * self.batch_size), dtype=np.float)
+        input_tensor = np.array(range(3 * 15 * self.batch_size), dtype=float)
         input_tensor = input_tensor.reshape((self.batch_size, 3, 15))
         output_tensor = conv.forward(input_tensor)
         self.assertEqual(output_tensor.shape,  (self.batch_size,self.num_kernels, 8))
 
     def test_backward_size(self):
         conv = Conv.Conv((1, 1), self.kernel_shape, self.num_kernels)
-        input_tensor = np.array(range(np.prod(self.input_shape) * self.batch_size), dtype=np.float)
+        input_tensor = np.array(range(np.prod(self.input_shape) * self.batch_size), dtype=float)
         input_tensor = input_tensor.reshape(self.batch_size, *self.input_shape)
         output_tensor = conv.forward(input_tensor)
         error_tensor = conv.backward(output_tensor)
@@ -638,7 +643,7 @@ class TestConv(unittest.TestCase):
 
     def test_backward_size_stride(self):
         conv = Conv.Conv((3, 2), self.kernel_shape, self.num_kernels)
-        input_tensor = np.array(range(np.prod(self.input_shape) * self.batch_size), dtype=np.float)
+        input_tensor = np.array(range(np.prod(self.input_shape) * self.batch_size), dtype=float)
         input_tensor = input_tensor.reshape(self.batch_size, *self.input_shape)
         output_tensor = conv.forward(input_tensor)
         error_tensor = conv.backward(output_tensor)
@@ -646,7 +651,7 @@ class TestConv(unittest.TestCase):
 
     def test_1D_backward_size(self):
         conv = Conv.Conv([2], (3, 3), self.num_kernels)
-        input_tensor = np.array(range(45 * self.batch_size), dtype=np.float)
+        input_tensor = np.array(range(45 * self.batch_size), dtype=float)
         input_tensor = input_tensor.reshape((self.batch_size, 3, 15))
         output_tensor = conv.forward(input_tensor)
         error_tensor = conv.backward(output_tensor)
@@ -654,7 +659,7 @@ class TestConv(unittest.TestCase):
 
     def test_1x1_convolution(self):
         conv = Conv.Conv((1, 1), (3, 1, 1), self.num_kernels)
-        input_tensor = np.array(range(self.input_size * self.batch_size), dtype=np.float)
+        input_tensor = np.array(range(self.input_size * self.batch_size), dtype=float)
         input_tensor = input_tensor.reshape(self.batch_size, *self.input_shape)
         output_tensor = conv.forward(input_tensor)
         self.assertEqual(output_tensor.shape, (self.batch_size, self.num_kernels, *self.input_shape[1:]))
@@ -664,7 +669,7 @@ class TestConv(unittest.TestCase):
     def test_layout_preservation(self):
         conv = Conv.Conv((1, 1), (3, 3, 3), 1)
         conv.initialize(self.TestInitializer(), Initializers.Constant(0.0))
-        input_tensor = np.array(range(np.prod(self.input_shape) * self.batch_size), dtype=np.float)
+        input_tensor = np.array(range(np.prod(self.input_shape) * self.batch_size), dtype=float)
         input_tensor = input_tensor.reshape(self.batch_size, *self.input_shape)
         output_tensor = conv.forward(input_tensor)
         self.assertAlmostEqual(np.sum(np.abs(np.squeeze(output_tensor) - input_tensor[:,1,:,:])), 0.)
@@ -818,7 +823,7 @@ class TestPooling(unittest.TestCase):
 
     def test_layout_preservation(self):
         pool = Pooling.Pooling((1, 1), (1, 1))
-        input_tensor = np.array(range(np.prod(self.input_shape) * self.batch_size), dtype=np.float)
+        input_tensor = np.array(range(np.prod(self.input_shape) * self.batch_size), dtype=float)
         input_tensor = input_tensor.reshape(self.batch_size, *self.input_shape)
         output_tensor = pool.forward(input_tensor)
         self.assertAlmostEqual(np.sum(np.abs(output_tensor-input_tensor)), 0.)
@@ -827,7 +832,7 @@ class TestPooling(unittest.TestCase):
         input_shape = (1, 3, 3)
         pool = Pooling.Pooling((2, 2), (2, 2))
         batch_size = 2
-        input_tensor = np.array(range(np.prod(input_shape) * batch_size), dtype=np.float)
+        input_tensor = np.array(range(np.prod(input_shape) * batch_size), dtype=float)
         input_tensor = input_tensor.reshape(batch_size, *input_shape)
         result = pool.forward(input_tensor)
         expected_result = np.array([[[[4]]], [[[13]]]])
@@ -837,7 +842,7 @@ class TestPooling(unittest.TestCase):
         input_shape = (1, 4, 4)
         pool = Pooling.Pooling((2, 2), (2, 2))
         batch_size = 2
-        input_tensor = np.array(range(np.prod(input_shape) * batch_size), dtype=np.float)
+        input_tensor = np.array(range(np.prod(input_shape) * batch_size), dtype=float)
         input_tensor = input_tensor.reshape(batch_size, *input_shape)
         result = pool.forward(input_tensor)
         expected_result = np.array([[[[ 5.,  7.],[13., 15.]]],[[[21., 23.],[29., 31.]]]])
@@ -862,7 +867,10 @@ class TestConstraints(unittest.TestCase):
         expected[1:3, 2:4] *= -1
 
         difference = np.sum(np.abs(weights_tensor - expected))
-        self.assertLessEqual(difference, 1e-10)
+        self.assertLessEqual(difference, 1e-10, msg="The calculate_gradient method in the "
+                                                    "regularizers is needed to compute the new update in the"
+                                                    " optimizers. For the L1 norm, it should return the element-wise "
+                                                    "sign of the weight tensor multiplied by the regularizer strength.")
 
     def test_L1_norm(self):
         regularizer = Constraints.L1_Regularizer(self.regularizer_strength)
@@ -870,7 +878,11 @@ class TestConstraints(unittest.TestCase):
         weights_tensor = np.ones(self.shape)
         weights_tensor[1:3, 2:4] *= -2
         norm = regularizer.norm(weights_tensor)
-        self.assertAlmostEqual(norm, 24*self.regularizer_strength)
+        self.assertAlmostEqual(norm, 24*self.regularizer_strength,
+                               msg="Possible error: wrong computation. "
+                                   "The norm method in the L1_Regularizer should return the sum of the absolute values"
+                                   "of the tensor multiplied by the regularizer strength."
+                               )
 
     def test_L2(self):
         regularizer = Constraints.L2_Regularizer(self.regularizer_strength)
@@ -879,7 +891,10 @@ class TestConstraints(unittest.TestCase):
         weights_tensor = regularizer.calculate_gradient(weights_tensor)
 
         difference = np.sum(np.abs(weights_tensor - np.ones(self.shape) * self.regularizer_strength))
-        self.assertLessEqual(difference, 1e-10)
+        self.assertLessEqual(difference, 1e-10, msg="The calculate_gradient method in the "
+                                                    "regularizers is needed to compute the new update in the"
+                                                    " optimizers. For the L2 norm, it should return the weight tensor "
+                                                    "multiplied by the regularizer strength.")
 
     def test_L2_norm(self):
         regularizer = Constraints.L2_Regularizer(self.regularizer_strength)
@@ -887,7 +902,11 @@ class TestConstraints(unittest.TestCase):
         weights_tensor = np.ones(self.shape)
         weights_tensor[1:3, 2:4] += 1
         norm = regularizer.norm(weights_tensor)
-        self.assertAlmostEqual(norm, 32 * self.regularizer_strength)
+        self.assertAlmostEqual(norm, 32 * self.regularizer_strength,
+                               msg="Possible error: wrong computation. "
+                                   "The norm method in the L2_Regularizer should return the L2 norm squared,"
+                                   " i.e. sum of squared elements of the tensor, "
+                                   "multiplied by the regularizer strength.")
 
     def test_L1_with_sgd(self):
         weights_tensor = np.ones(self.shape)
@@ -900,7 +919,15 @@ class TestConstraints(unittest.TestCase):
         result = optimizer.calculate_update(weights_tensor, np.ones(self.shape)*2)
         result = optimizer.calculate_update(result, np.ones(self.shape) * 2)
 
-        np.testing.assert_almost_equal(np.sum(result), -116, 2)
+        np.testing.assert_almost_equal(np.sum(result), -116, 2,
+                                       err_msg=
+                                       "Make sure to have executed the following steps:\n"
+                                       "- add a method 'add_regularizer' to the optimizer\n"
+                                       "- add a member 'regularizer' to the optimizer that stores the regularizer\n"
+                                       "- have all optimizers inherit from the 'Optimizer' class\n"
+                                       "- use the 'calculate_gradient' method of the regularizers in the "
+                                       "'calculate_update' method of each optimizer. E.g. you can compute right at the"
+                                       " beginning the 'shrinked weights' and use those instead of the normal weights.")
 
     def test_L2_with_sgd(self):
         weights_tensor = np.ones(self.shape)
@@ -913,7 +940,15 @@ class TestConstraints(unittest.TestCase):
         result = optimizer.calculate_update(weights_tensor, np.ones(self.shape)*2)
         result = optimizer.calculate_update(result, np.ones(self.shape) * 2)
 
-        np.testing.assert_almost_equal(np.sum(result), 268, 2)
+        np.testing.assert_almost_equal(np.sum(result), 268, 2,
+                                       err_msg=
+                                       "Make sure to have executed the following steps:\n"
+                                       "- add a method 'add_regularizer' to the optimizer\n"
+                                       "- add a member 'regularizer' to the optimizer that stores the regularizer\n"
+                                       "- have all optimizers inherit from the 'Optimizer' class\n"
+                                       "- use the 'calculate_gradient' method of the regularizers in the "
+                                       "'calculate_update' method of each optimizer. E.g. you can compute right at the"
+                                       " beginning the 'shrinked weights' and use those instead of the normal weights.")
 
     def test_L1_with_sgd_w_momentum(self):
         weights_tensor = np.ones(self.shape)
@@ -926,7 +961,15 @@ class TestConstraints(unittest.TestCase):
         result = optimizer.calculate_update(weights_tensor, np.ones(self.shape)*2)
         result = optimizer.calculate_update(result, np.ones(self.shape) * 2)
 
-        np.testing.assert_almost_equal(np.sum(result), -188, 1)
+        np.testing.assert_almost_equal(np.sum(result), -188, 1,
+                                       err_msg=
+                                       "Make sure to have executed the following steps:\n"
+                                       "- add a method 'add_regularizer' to the optimizer\n"
+                                       "- add a member 'regularizer' to the optimizer that stores the regularizer\n"
+                                       "- have all optimizers inherit from the 'Optimizer' class\n"
+                                       "- use the 'calculate_gradient' method of the regularizers in the "
+                                       "'calculate_update' method of each optimizer. E.g. you can compute right at the"
+                                       " beginning the 'shrinked weights' and use those instead of the normal weights.")
 
     def test_L2_with_sgd_w_momentum(self):
         weights_tensor = np.ones(self.shape)
@@ -939,7 +982,15 @@ class TestConstraints(unittest.TestCase):
         result = optimizer.calculate_update(weights_tensor, np.ones(self.shape)*2)
         result = optimizer.calculate_update(result, np.ones(self.shape) * 2)
 
-        np.testing.assert_almost_equal(np.sum(result), 196, 1)
+        np.testing.assert_almost_equal(np.sum(result), 196, 1,
+                                       err_msg=
+                                       "Make sure to have executed the following steps:\n"
+                                       "- add a method 'add_regularizer' to the optimizer\n"
+                                       "- add a member 'regularizer' to the optimizer that stores the regularizer\n"
+                                       "- have all optimizers inherit from the 'Optimizer' class\n"
+                                       "- use the 'calculate_gradient' method of the regularizers in the "
+                                       "'calculate_update' method of each optimizer. E.g. you can compute right at the"
+                                       " beginning the 'shrinked weights' and use those instead of the normal weights.")
 
     def test_L1_with_adam(self):
         weights_tensor = np.ones(self.shape)
@@ -952,7 +1003,15 @@ class TestConstraints(unittest.TestCase):
         result = optimizer.calculate_update(weights_tensor, np.ones(self.shape)*2)
         result = optimizer.calculate_update(result, np.ones(self.shape) * 2)
 
-        np.testing.assert_almost_equal(np.sum(result), -68, 2)
+        np.testing.assert_almost_equal(np.sum(result), -68, 2,
+                                       err_msg=
+                                       "Make sure to have executed the following steps:\n"
+                                       "- add a method 'add_regularizer' to the optimizer\n"
+                                       "- add a member 'regularizer' to the optimizer that stores the regularizer\n"
+                                       "- have all optimizers inherit from the 'Optimizer' class\n"
+                                       "- use the 'calculate_gradient' method of the regularizers in the "
+                                       "'calculate_update' method of each optimizer. E.g. you can compute right at the"
+                                       " beginning the 'shrinked weights' and use those instead of the normal weights.")
 
     def test_L2_with_adam(self):
         weights_tensor = np.ones(self.shape)
@@ -965,7 +1024,15 @@ class TestConstraints(unittest.TestCase):
         result = optimizer.calculate_update(weights_tensor, np.ones(self.shape)*2)
         result = optimizer.calculate_update(result, np.ones(self.shape) * 2)
 
-        np.testing.assert_almost_equal(np.sum(result), 188, 2)
+        np.testing.assert_almost_equal(np.sum(result), 188, 2,
+                                       err_msg=
+                                       "Make sure to have executed the following steps:\n"
+                                       "- add a method 'add_regularizer' to the optimizer\n"
+                                       "- add a member 'regularizer' to the optimizer that stores the regularizer\n"
+                                       "- have all optimizers inherit from the 'Optimizer' class\n"
+                                       "- use the 'calculate_gradient' method of the regularizers in the "
+                                       "'calculate_update' method of each optimizer. E.g. you can compute right at the"
+                                       " beginning the 'shrinked weights' and use those instead of the normal weights.")
 
 
 class TestDropout(unittest.TestCase):
@@ -976,11 +1043,11 @@ class TestDropout(unittest.TestCase):
 
     def test_trainable(self):
         layer = Dropout.Dropout(0.25)
-        self.assertFalse(layer.trainable)
+        self.assertFalse(layer.trainable, "Error: trainable flag is set to true.")
 
     def test_default_phase(self):
         drop_layer = Dropout.Dropout(0.25)
-        self.assertFalse(drop_layer.testing_phase)
+        self.assertFalse(drop_layer.testing_phase, "Error: default for testing_phase should be false.")
 
     def test_forward_trainTime(self):
         drop_layer = Dropout.Dropout(0.25)
@@ -988,13 +1055,20 @@ class TestDropout(unittest.TestCase):
         self.assertEqual(np.max(output), 4)
         self.assertEqual(np.min(output), 0)
         sum_over_mean = np.sum(np.mean(output, axis=0))
-        self.assertAlmostEqual(sum_over_mean/self.input_size, 1., places=1)
+        self.assertAlmostEqual(sum_over_mean/self.input_size, 1., places=1,
+                               msg="Make sure to implement inverted dropout:\n"
+                                   "During training time:\n"
+                                   "- randomly set activations to zero with probability '1-p'\n"
+                                   "- multiply all activations by 1/p")
 
     def test_position_preservation(self):
         drop_layer = Dropout.Dropout(0.5)
         output = drop_layer.forward(self.input_tensor)
         error_prev = drop_layer.backward(self.input_tensor)
-        np.testing.assert_almost_equal(np.where(output == 0.), np.where(error_prev == 0.))
+        np.testing.assert_almost_equal(np.where(output == 0.), np.where(error_prev == 0.),
+                                       err_msg="Make sure to set the error tensor to zero in the"
+                                               "positions where the input tensor was set to zero during"
+                                               "the forward pass.")
 
     def test_forward_testTime(self):
         drop_layer = Dropout.Dropout(0.5)
@@ -1004,14 +1078,18 @@ class TestDropout(unittest.TestCase):
         self.assertEqual(np.max(output), 1.)
         self.assertEqual(np.min(output), 1.)
         sum_over_mean = np.sum(np.mean(output, axis=0))
-        self.assertEqual(sum_over_mean, 1. * self.input_size)
+        self.assertEqual(sum_over_mean, 1. * self.input_size,
+                         msg="Make sure that during test time the input tensor is left unchanged"
+                             "by the 'forward' method.")
 
     def test_backward(self):
         drop_layer = Dropout.Dropout(0.5)
         drop_layer.forward(self.input_tensor)
         output = drop_layer.backward(self.input_tensor)
-        self.assertEqual(np.max(output), 2)
-        self.assertEqual(np.min(output), 0)
+        self.assertEqual(np.max(output), 2, msg="Possible error: in the backward during training time"
+                                            "all activations should be multiplied by 1/p")
+        self.assertEqual(np.min(output), 0, msg="Possible error: in the backward the activations corresponding to those"
+                                                "set to zero in the forward pass should also be set to zero.")
 
     def test_gradient(self):
         batch_size = 10
@@ -1065,24 +1143,24 @@ class TestBatchNorm(unittest.TestCase):
 
     def test_trainable(self):
         layer = BatchNormalization.BatchNormalization(self.input_tensor.shape[-1])
-        self.assertTrue(layer.trainable)
+        self.assertTrue(layer.trainable, "Error: trainable flag set to false.")
 
     def test_default_phase(self):
         layer = BatchNormalization.BatchNormalization(self.input_tensor.shape[-1])
-        self.assertFalse(layer.testing_phase)
+        self.assertFalse(layer.testing_phase, "Error: default phase set to true.")
 
     def test_forward_shape(self):
         layer = BatchNormalization.BatchNormalization(self.input_tensor.shape[-1])
         output = layer.forward(self.input_tensor)
 
-        self.assertEqual(output.shape[0], self.input_tensor.shape[0])
-        self.assertEqual(output.shape[1], self.input_tensor.shape[1])
+        self.assertEqual(output.shape[0], self.input_tensor.shape[0], msg="Error: output shape is different from input.")
+        self.assertEqual(output.shape[1], self.input_tensor.shape[1], msg="Error: output shape is different from input.")
 
     def test_forward_shape_convolutional(self):
         layer = BatchNormalization.BatchNormalization(self.channels)
         output = layer.forward(self.input_tensor_conv)
 
-        self.assertEqual(output.shape, self.input_tensor_conv.shape)
+        self.assertEqual(output.shape, self.input_tensor_conv.shape, msg="Error: output shape is different from input.")
 
     def test_forward(self):
         layer = BatchNormalization.BatchNormalization(self.input_tensor.shape[-1])
@@ -1090,16 +1168,26 @@ class TestBatchNorm(unittest.TestCase):
         mean = np.mean(output, axis=0)
         var = np.var(output, axis=0)
 
-        self.assertAlmostEqual(np.sum(np.square(mean - np.zeros(mean.shape[0]))), 0)
-        self.assertAlmostEqual(np.sum(np.square(var - np.ones(var.shape[0]))), 0)
+        self.assertAlmostEqual(np.sum(np.square(mean - np.zeros(mean.shape[0]))), 0,
+                               msg="Error: output does not have zero mean (along the channel dimension).")
+        self.assertAlmostEqual(np.sum(np.square(var - np.ones(var.shape[0]))), 0,
+                               msg="Error: output does not have unit variance (along the channel dimension.")
 
     def test_reformat_image2vec(self):
         layer = BatchNormalization.BatchNormalization(3)
         image_tensor = np.arange(0, 5 * 3 * 6 * 4).reshape(5, 3, 6, 4)
         vec_tensor = layer.reformat(image_tensor)
         np.testing.assert_equal(vec_tensor.shape, (120, 3))
-        self.assertEqual(np.sum(vec_tensor, 1)[0], 72)
-        self.assertEqual(np.sum(vec_tensor, 0)[0], 18660)
+        self.assertEqual(np.sum(vec_tensor, 1)[0], 72, msg="Error: wrong shape. In order to understand how"
+                                                           " to implement the reformat function take a look at"
+                                                           " the Regularization pdf. Notice that the reformat function "
+                                                           "should take care of both cases: reshape an image to a vector"
+                                                           " and viceversa.")
+        self.assertEqual(np.sum(vec_tensor, 0)[0], 18660, msg="Error: wrong shape. In order to understand how"
+                                                           " to implement the reformat function take a look at"
+                                                           " the Regularization pdf. Notice that the reformat function "
+                                                           "should take care of both cases: reshape an image to a vector"
+                                                           " and viceversa.")
 
     def test_reformat_vec2image(self):
         layer = BatchNormalization.BatchNormalization(3)
@@ -1107,8 +1195,16 @@ class TestBatchNorm(unittest.TestCase):
         vec_tensor = np.arange(0, 5 * 3 * 6 * 4).reshape(120, 3)
         image_tensor = layer.reformat(vec_tensor)
         np.testing.assert_equal(image_tensor.shape, (5, 3, 6, 4))
-        self.assertEqual(np.sum(image_tensor, (0,1,2))[0], 15750)
-        self.assertEqual(np.sum(image_tensor, (0,2,3))[0], 21420)
+        self.assertEqual(np.sum(image_tensor, (0,1,2))[0], 15750, msg="Error: wrong shape. In order to understand how"
+                                                           " to implement the reformat function take a look at"
+                                                           " the Regularization pdf. Notice that the reformat function "
+                                                           "should take care of both cases: reshape an image to a vector"
+                                                           " and viceversa.")
+        self.assertEqual(np.sum(image_tensor, (0,2,3))[0], 21420, msg="Error: wrong shape. In order to understand how"
+                                                           " to implement the reformat function take a look at"
+                                                           " the Regularization pdf. Notice that the reformat function "
+                                                           "should take care of both cases: reshape an image to a vector"
+                                                           " and viceversa.")
 
     def test_reformat(self):
         layer = BatchNormalization.BatchNormalization(3)
@@ -1116,15 +1212,19 @@ class TestBatchNorm(unittest.TestCase):
         image_tensor = np.arange(0, 5 * 3 * 6 * 4).reshape(5, 3, 6, 4)
         vec_tensor = layer.reformat(image_tensor)
         image_tensor2 = layer.reformat(vec_tensor)
-        np.testing.assert_allclose(image_tensor, image_tensor2)
+        np.testing.assert_allclose(image_tensor, image_tensor2, err_msg="Error! Make sure that you can reshape a 4D "
+                                                                        "image to a vector and compute again the image "
+                                                                        "from the vector using the 'reformat' function.")
 
     def test_forward_convolutional(self):
         layer = BatchNormalization.BatchNormalization(self.channels)
         output = layer.forward(self.input_tensor_conv)
         mean, var = TestBatchNorm._channel_moments(output, self.channels)
 
-        self.assertAlmostEqual(np.sum(np.square(mean)), 0)
-        self.assertAlmostEqual(np.sum(np.square(var - np.ones_like(var))), 0)
+        self.assertAlmostEqual(np.sum(np.square(mean)), 0, msg="Make sure to use the reformat method in the forward pass"
+                                                               "and to transform back the output before returning it.")
+        self.assertAlmostEqual(np.sum(np.square(var - np.ones_like(var))), 0, msg="Make sure to use the reformat method in the forward pass"
+                                                               "and to transform back the output before returning it.")
 
     def test_forward_train_phase(self):
         layer = BatchNormalization.BatchNormalization(self.input_tensor.shape[-1])
@@ -1137,7 +1237,9 @@ class TestBatchNorm(unittest.TestCase):
         mean_input = np.mean(self.input_tensor, axis=0)
         var_input = np.var(self.input_tensor, axis=0)
 
-        self.assertNotEqual(np.sum(np.square(mean + (mean_input/np.sqrt(var_input)))), 0)
+        self.assertNotEqual(np.sum(np.square(mean + (mean_input/np.sqrt(var_input)))), 0,
+                            msg="Make sure to use the batch mean and batch variance in the"
+                                " computation of x tilde.")
 
     def test_forward_train_phase_convolutional(self):
         layer = BatchNormalization.BatchNormalization(self.channels)
@@ -1148,7 +1250,9 @@ class TestBatchNorm(unittest.TestCase):
         mean, var = TestBatchNorm._channel_moments(output, self.channels)
         mean_input, var_input = TestBatchNorm._channel_moments(self.input_tensor_conv, self.channels)
 
-        self.assertNotEqual(np.sum(np.square(mean + (mean_input/np.sqrt(var_input)))), 0)
+        self.assertNotEqual(np.sum(np.square(mean + (mean_input/np.sqrt(var_input)))), 0,
+                            msg="Make sure to use the batch mean and batch variance in the"
+                                " computation of x tilde.")
 
     def test_forward_test_phase(self):
         layer = BatchNormalization.BatchNormalization(self.input_tensor.shape[-1])
@@ -1163,8 +1267,13 @@ class TestBatchNorm(unittest.TestCase):
         mean_input = np.mean(self.input_tensor, axis=0)
         var_input = np.var(self.input_tensor, axis=0)
 
-        self.assertAlmostEqual(np.sum(np.square(mean + (mean_input/np.sqrt(var_input)))), 0)
-        self.assertAlmostEqual(np.sum(np.square(var)), 0)
+        self.assertAlmostEqual(np.sum(np.square(mean + (mean_input/np.sqrt(var_input)))), 0,
+                               msg="Make sure to use the test mean. The test mean is computed during training time"
+                                   " as a moving average. It is then kept fixed during test time.")
+        self.assertAlmostEqual(np.sum(np.square(var)), 0,
+                               msg="Make sure to use the test variance. The test variance is computed during training time"
+                                   " as a moving average. It is then kept fixed during test time."
+                               )
 
     def test_forward_test_phase_convolutional(self):
         layer = BatchNormalization.BatchNormalization(self.channels)
@@ -1176,8 +1285,16 @@ class TestBatchNorm(unittest.TestCase):
         mean, var = TestBatchNorm._channel_moments(output, self.channels)
         mean_input, var_input = TestBatchNorm._channel_moments(self.input_tensor_conv, self.channels)
 
-        self.assertAlmostEqual(np.sum(np.square(mean + (mean_input / np.sqrt(var_input)))), 0)
-        self.assertAlmostEqual(np.sum(np.square(var)), 0)
+        self.assertAlmostEqual(np.sum(np.square(mean + (mean_input / np.sqrt(var_input)))), 0,
+                               msg="1. Make sure that reformatting is working\n"
+                                   "2. Make sure to use the test mean. The test mean is computed during training time"
+                                   " as a moving average. It is then kept fixed during test time."
+                               )
+        self.assertAlmostEqual(np.sum(np.square(var)), 0,
+                               msg="1. Make sure that reformatting is working\n"
+                                   "2. Make sure to use the test variance. The test variance is computed during training time"
+                                   " as a moving average. It is then kept fixed during test time."
+                               )
 
     def test_gradient(self):
         self.layers[0] = BatchNormalization.BatchNormalization(self.input_tensor.shape[-1])
@@ -1239,14 +1356,26 @@ class TestRNN(unittest.TestCase):
         for i in range(self.batch_size):
             self.label_tensor[i, np.random.randint(0, self.categories)] = 1
 
+    def test_initialization(self):
+        layer = RNN.RNN(self.input_size, self.hidden_size, self.output_size)
+        init = TestFullyConnected.TestInitializer()
+        layer.initialize(init, Initializers.Constant(0.0))
+        if layer.weights.shape[0] > layer.weights.shape[1]:
+            self.assertEqual(np.sum(layer.weights), 21.0, msg="Make sure to provide a property named 'weights' that allows"
+                                                          " to access the weights of the first FC layer.")
+        else:
+            self.assertEqual(np.sum(layer.weights), 60.0, msg="Make sure to provide a property named 'weights' that allows"
+                                                          " to access the weights of the first FC layer.")
+
     def test_trainable(self):
         layer = RNN.RNN(self.input_size, self.hidden_size, self.output_size)
-        self.assertTrue(layer.trainable)
+        self.assertTrue(layer.trainable, "Error: trainable flag set to false.")
 
     def test_forward_size(self):
         layer = RNN.RNN(self.input_size, self.hidden_size, self.output_size)
         output_tensor = layer.forward(self.input_tensor)
-        self.assertEqual(output_tensor.shape[1], self.output_size)
+        self.assertEqual(output_tensor.shape[1], self.output_size, msg="Possible error: wrong weights' shapes in "
+                                                                       "one of the FC layers.")
         self.assertEqual(output_tensor.shape[0], self.batch_size)
 
     def test_forward_stateful(self):
@@ -1257,14 +1386,16 @@ class TestRNN(unittest.TestCase):
 
         output_tensor = layer.forward(input_tensor)
 
-        self.assertNotEqual(np.sum(np.square(output_tensor[0, :] - output_tensor[1, :])), 0)
+        self.assertNotEqual(np.sum(np.square(output_tensor[0, :] - output_tensor[1, :])), 0,
+                            msg="Possible error: hidden state is not updated.")
 
     def test_forward_stateful_TBPTT(self):
         layer = RNN.RNN(self.input_size, self.hidden_size, self.output_size)
         layer.memorize = True
         output_tensor_first = layer.forward(self.input_tensor)
         output_tensor_second = layer.forward(self.input_tensor)
-        self.assertNotEqual(np.sum(np.square(output_tensor_first - output_tensor_second)), 0)
+        self.assertNotEqual(np.sum(np.square(output_tensor_first - output_tensor_second)), 0,
+                            msg="Possible error: hidden state is not updated.")
 
     def test_backward_size(self):
         layer = RNN.RNN(self.input_size, self.hidden_size, self.output_size)
@@ -1292,7 +1423,15 @@ class TestRNN(unittest.TestCase):
         layers.append(layer)
         layers.append(L2Loss())
         difference = Helpers.gradient_check(layers, input_tensor, self.label_tensor)
-        self.assertLessEqual(np.sum(difference), 1e-4)
+        self.assertLessEqual(np.sum(difference), 1e-4,
+                             msg="To compute the gradient we recommend using the 'backward' methods"
+                                 "of each layer. In order to use the backward method, we need to restore the correct"
+                                 " 'state' of each layer, that is we need to set the activations of that layer to the "
+                                 "correct ones (at each time step t these activations were different). Once all "
+                                 "activations are set correctly we can proceed and compute the gradient by going back"
+                                 " through time: starting from time step T going back to time step T-1, T-2, ...,  0."
+                                 "In this way we will compute the gradient at each time step. The result should be then"
+                                 " reversed such that we obtain the gradient starting from time step 0.")
 
     def test_gradient_weights(self):
         input_tensor = np.abs(np.random.random((self.input_size, self.batch_size))).T
@@ -1302,7 +1441,16 @@ class TestRNN(unittest.TestCase):
         layers.append(layer)
         layers.append(L2Loss())
         difference = Helpers.gradient_check_weights(layers, input_tensor, self.label_tensor, False)
-        self.assertLessEqual(np.sum(difference), 1e-4)
+        self.assertLessEqual(np.sum(difference), 1e-4, msg="If you have implemented the structure correctly, "
+                                                           "the gradient weights will be computed automatically by the "
+                                                           "FC layers when you call the 'backward' method. In doing so "
+                                                           "we have a different value of the gradient_weights for each "
+                                                           "time step. The gradient_weights used to compute the update "
+                                                           "for the FC layers is the sum of all gradients at each step."
+                                                           "Thus, you should accumulate the gradient_weights when going"
+                                                           " back through time and use the sum to compute the update."
+                                                           " Remember that you can access these gradient using the "
+                                                           "property named 'gradient_weights'. ")
 
     def test_weights_shape(self):
         layer = RNN.RNN(self.input_size, self.hidden_size, self.categories)
@@ -1316,7 +1464,7 @@ class TestRNN(unittest.TestCase):
         layer = RNN.RNN(100000, 100, 1)
         layer.initialize(Initializers.UniformRandom(), Initializers.UniformRandom())
         result = layer.forward(input_tensor)
-        self.assertGreater(np.sum(result), 0)
+        self.assertGreater(np.sum(result), 0, "Possible error: bias in the FC layers is not implemented.")
 
 
 if LSTM_TEST:
@@ -1435,6 +1583,7 @@ class TestNeuralNetwork3(unittest.TestCase):
         self.assertTrue(np.all(net.layers[0].weights == 0.123))
 
     def test_data_access(self):
+        np.random.seed(None)
         net = NeuralNetwork.NeuralNetwork(Optimizers.Sgd(1e-4),
                                           Initializers.UniformRandom(),
                                           Initializers.Constant(0.1))
@@ -1455,6 +1604,7 @@ class TestNeuralNetwork3(unittest.TestCase):
         self.assertNotEqual(out, out2)
 
     def test_iris_data(self):
+        np.random.seed(None)
         net = NeuralNetwork.NeuralNetwork(Optimizers.Sgd(1e-3),
                                           Initializers.UniformRandom(),
                                           Initializers.Constant(0.1))
@@ -1513,6 +1663,7 @@ class TestNeuralNetwork3(unittest.TestCase):
                                                   "for " + layer.__class__.__name__)
 
     def test_iris_data_with_momentum(self):
+        np.random.seed(None)
         net = NeuralNetwork.NeuralNetwork(Optimizers.SgdWithMomentum(1e-3, 0.8),
                                           Initializers.UniformRandom(),
                                           Initializers.Constant(0.1))
@@ -1543,6 +1694,7 @@ class TestNeuralNetwork3(unittest.TestCase):
         self.assertGreater(accuracy, 0.9)
 
     def test_iris_data_with_adam(self):
+        np.random.seed(None)
         net = NeuralNetwork.NeuralNetwork(Optimizers.Adam(1e-3, 0.9, 0.999),
                                           Initializers.UniformRandom(),
                                           Initializers.Constant(0.1))
@@ -1573,6 +1725,7 @@ class TestNeuralNetwork3(unittest.TestCase):
         self.assertGreater(accuracy, 0.9)
 
     def test_iris_data_with_batchnorm(self):
+        np.random.seed(None)
         net = NeuralNetwork.NeuralNetwork(Optimizers.Adam(1e-2, 0.9, 0.999),
                                           Initializers.UniformRandom(),
                                           Initializers.Constant(0.1))
@@ -1607,6 +1760,7 @@ class TestNeuralNetwork3(unittest.TestCase):
         self.assertEqual(np.mean(np.square(results - results_next_run)), 0)
 
     def test_iris_data_with_dropout(self):
+        np.random.seed(None)
         net = NeuralNetwork.NeuralNetwork(Optimizers.Adam(1e-2, 0.9, 0.999),
                                           Initializers.UniformRandom(),
                                           Initializers.Constant(0.1))
@@ -1641,6 +1795,7 @@ class TestNeuralNetwork3(unittest.TestCase):
         self.assertEqual(np.mean(np.square(results - results_next_run)), 0)
 
     def test_layer_phases(self):
+        np.random.seed(None)
         net = NeuralNetwork.NeuralNetwork(Optimizers.Adam(1e-2, 0.9, 0.999),
                                           Initializers.UniformRandom(),
                                           Initializers.Constant(0.1))
@@ -1697,6 +1852,7 @@ class TestNeuralNetwork3(unittest.TestCase):
         self._perform_test(sgd_with_l2, TestNeuralNetwork3.iterations, 'Batch_norm and L2', False, True)
 
     def _perform_test(self, optimizer, iterations, description, dropout, batch_norm):
+        np.random.seed(None)
         net = NeuralNetwork.NeuralNetwork(optimizer,
                                           Initializers.He(),
                                           Initializers.Constant(0.1))

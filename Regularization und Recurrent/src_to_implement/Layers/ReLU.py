@@ -1,15 +1,30 @@
 import numpy as np
-from Optimization import Optimizers
-from Layers import Base
+from Layers.Base import BaseLayer
 
-class ReLU(Base.BaseLayer):
+
+class ReLU(BaseLayer):
     def __init__(self):
         super().__init__()
 
     def forward(self, input_tensor):
-        self.lastIn = input_tensor
-        self.lastOut = np.maximum(0, input_tensor) 
-        return self.lastOut
+        self.input_tensor = input_tensor
+        return np.maximum(0, input_tensor)
 
     def backward(self, error_tensor):
-        return np.where(self.lastIn > 0, error_tensor, 0)
+        relu_grad = np.where(self.input_tensor > 0, 1, 0)     #np.where(condition, x, y)
+        return error_tensor * relu_grad
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
