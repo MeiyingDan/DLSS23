@@ -6,6 +6,7 @@ from Layers.FullyConnected import FullyConnected
 from Layers.TanH import TanH
 
 #Elman RRN Implementation
+    # stellt 'Zeit und Reinfolge' dar.
 class RNN(Base.BaseLayer):
                                                            #hidden_size = Dimension des Verstekten Zustands
     def __init__(self,input_size,hidden_size,output_size): #input_size = Dimension des Eingangsvektor
