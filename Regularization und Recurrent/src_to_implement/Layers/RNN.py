@@ -9,7 +9,7 @@ from Layers.TanH import TanH
 # Elman RRN Implementation
 class RNN(BaseLayer):
     # hidden_size = Dimension des Verstekten Zustands
-    def __init__(self, input_size, hidden_size, output_size):  # input_size = Dimension des Eingangsvektor
+    def __init__(self, input_size, hidden_size, output_size):  # input_size = Dimension des Eingangsvektors
         super().__init__()
         self.trainable = True
         # Aufgabe 2.2/1
@@ -19,7 +19,7 @@ class RNN(BaseLayer):
         # Aufgabe 2.2/2
         self._memorize = False
         # Zusatzliche Parametern fur RRN
-        self.h_t = None  # Erste versteckten Zustand existiert nicht.
+        self.hid_Zustand = None  # Erste versteckten Zustand existiert nicht.
         self.h_mem = []
         self.FC_h = FullyConnected(hidden_size + input_size, hidden_size)
         self.FC_y = FullyConnected(hidden_size, output_size)
@@ -29,7 +29,20 @@ class RNN(BaseLayer):
         self.weights = self.FC_h.weights
         self.tan_h = TanH()
         self.bptt = 0        # 只进行当前时间步的反向传播， 只需要单个时间步的梯度
-        self.prev_h_t = None
+        ''' Back_Propagation_Through_Time(a, y)   // a[t] ist die Eingang um Zeit t. y[t] ist die Ausgang um Zeit t. y[t]
+            Offenen den Netzwerk zu k instances of f - Feedback Layer 
+            do until stopping criterion is met:
+            x := the zero-magnitude vector // x is the current context
+        for t from 0 to n − k do      // t is time. n is the length of the training sequence
+            Set the network inputs to x, a[t], a[t+1], ..., a[t+k−1]
+            p := forward-propagate the inputs over the whole unfolded network
+            e := y[t+k] − p;           // error = target − prediction
+            Back-propagate the error, e, back across the whole unfolded network
+            Sum the weight changes in the k instances of f together.
+            Update all the weights in f and g.
+            x := f(x, a[t]);           // compute the context for the next time-step
+        '''
+        self.prev_hid_Zustand = None
         self.batch_size = None
         self.optimizer = None
 
@@ -39,28 +52,28 @@ class RNN(BaseLayer):
 
         # Konditional Schleife, Entschiedet ob versteckten Zustand als Null betrachten oder von vorherigen Iteration benutzten.
         if self._memorize:
-            if self.h_t is None:
-                self.h_t = np.zeros((self.batch_size + 1, self.hidden_size))
+            if self.hid_Zustand is None:
+                self.hid_Zustand = np.zeros((self.batch_size + 1, self.hidden_size))
             else:
-                self.h_t[0] = self.prev_h_t
+                self.hid_Zustand[0] = self.prev_hid_Zustand
         else:
-            self.h_t = np.zeros((self.batch_size + 1, self.hidden_size))
+            self.hid_Zustand = np.zeros((self.batch_size + 1, self.hidden_size))
 
         y_t = np.zeros((self.batch_size, self.output_size))
 
-        for b in range(self.batch_size):
-            hidden_ax = self.h_t[b][np.newaxis, :]   # 一维变二维
-            input_ax = input_tensor[b][np.newaxis, :]
+        for batch in range(self.batch_size):
+            hidden_ax = self.hid_Zustand[batch][np.newaxis, :]   # 一维变二维
+            input_ax = input_tensor[batch][np.newaxis, :]
             input_new = np.concatenate((hidden_ax, input_ax), axis=1)
 
             self.h_mem.append(input_new)          # 存储每个时间步的输入数据和隐藏状态的组合
 
             w_t = self.FC_h.forward(input_new)
-            input_new = np.concatenate((np.expand_dims(self.h_t[b], 0), np.expand_dims(input_tensor[b], 0)), axis=1)
-            self.h_t[b + 1] = TanH().forward(w_t)
-            y_t[b] = (self.FC_y.forward(self.h_t[b + 1][np.newaxis, :]))
+            input_new = np.concatenate((np.expand_dims(self.hid_Zustand[b], 0), np.expand_dims(input_tensor[b], 0)), axis=1)
+            self.hid_Zustand[batch + 1] = TanH().forward(w_t)
+            y_t[batch] = (self.FC_y.forward(self.hid_Zustand[batch + 1][np.newaxis, :]))
 
-        self.prev_h_t = self.h_t[-1]
+        self.prev_hid_Zustand = self.hid_Zustand[-1]
         self.input_tensor = input_tensor
 
         return y_t
@@ -71,19 +84,19 @@ class RNN(BaseLayer):
         self.gradient_weights_y = np.zeros((self.hidden_size + 1, self.output_size))          # 隐藏层加偏置
         self.gradient_weights_h = np.zeros((self.hidden_size + self.input_size + 1, self.hidden_size))
         count = 0      # 迭代次数
-        grad_tanh = 1 - self.h_t[1::] ** 2
+        grad_tanh = 1 - self.hid_Zustand[1::] ** 2
         hidden_error = np.zeros((1, self.hidden_size))
 
         for b in reversed(range(self.batch_size)):
             yh_error = self.FC_y.backward(error_tensor[b][np.newaxis, :])
-            self.FC_y.input_tensor = np.hstack((self.h_t[b + 1], 1))[np.newaxis, :] # 引入偏置，当前时间步的输入 一维变二维
+            self.FC_y.input_tensor = np.hstack((self.hid_Zustand[b + 1], 1))[np.newaxis, :] # 引入偏置，当前时间步的输入 一维变二维
             grad_yh = hidden_error + yh_error            # 当前时间步的隐藏状态梯度 + 输出误差关于全连接层输出的梯度
             grad_hidden = grad_tanh[b] * grad_yh
             xh_error = self.FC_h.backward(grad_hidden)
             hidden_error = xh_error[:, 0:self.hidden_size]
             x_error = xh_error[:, self.hidden_size:(self.hidden_size + self.input_size + 1)]
             self.out_error[b] = x_error
-            con = np.hstack((self.h_t[b], self.input_tensor[b], 1))          # 一维
+            con = np.hstack((self.hid_Zustand[b], self.input_tensor[b], 1))          # 一维
             self.FC_h.input_tensor = con[np.newaxis, :]          # 一维变二维，全连接层 FC_h 的输入张量
             if count <= self.bptt:
                 self.weights_y = self.FC_y.weights
